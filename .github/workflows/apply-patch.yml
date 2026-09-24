@@ -15,19 +15,25 @@ jobs:
         with:
           ref: master
 
-      - name: 修改御三家选择代码
+      - name: 修改御三家选择代码（27只，9页）
         run: |
           cat > /tmp/p1.py << 'PYEOF'
+          # -*- coding: utf-8 -*-
           import io, sys
+
           p = "src/starter_choose.c"
           s = io.open(p, encoding="utf-8").read()
+
+          # 统一特殊字符，避免匹配失败
+          s = s.replace("Pok\u00e9mon", "Pokemon")
+
           R = []
 
           R.append((
           "#define STARTER_MON_COUNT   3",
           "#define STARTER_MON_COUNT   3\n"
           "#define STARTER_PAGE_COUNT  9\n"
-          "#define STARTER_MON_TOTAL   27"))
+          "#define STARTER_MON_TOTAL   (STARTER_PAGE_COUNT * STARTER_MON_COUNT)"))
 
           R.append((
           "#define GRASS_STARTER (IS_FRLG ? SPECIES_BULBASAUR  : SPECIES_TREECKO)\n"
@@ -147,18 +153,6 @@ jobs:
           "        PlaySE(SE_SELECT);\n"
           "        gTasks[taskId].func = Task_MoveStarterChooseCursor;\n"
           "    }\n"
-          "    else if (JOY_NEW(L_BUTTON))\n"
-          "    {\n"
-          "        gTasks[taskId].tStarterPage = (page + STARTER_PAGE_COUNT - 1) % STARTER_PAGE_COUNT;\n"
-          "        PlaySE(SE_SELECT);\n"
-          "        gTasks[taskId].func = Task_MoveStarterChooseCursor;\n"
-          "    }\n"
-          "    else if (JOY_NEW(R_BUTTON))\n"
-          "    {\n"
-          "        gTasks[taskId].tStarterPage = (page + 1) % STARTER_PAGE_COUNT;\n"
-          "        PlaySE(SE_SELECT);\n"
-          "        gTasks[taskId].func = Task_MoveStarterChooseCursor;\n"
-          "    }\n"
           "}"))
 
           R.append((
@@ -206,16 +200,27 @@ jobs:
               cnt = item[2] if len(item) > 2 else 1
               n = s.count(old)
               if n != cnt:
-                  print("!! 没找到(出现 %d 次, 期望 %d 次): %s" % (n, cnt, old[:60]))
+                  print("!! 没找到 (出现 %d 次, 期望 %d 次): %s" % (n, cnt, old[:60].replace("\n", "\\n")))
                   fail = 1
                   continue
               s = s.replace(old, new)
-              print("OK 替换: %s" % old[:60])
+              print("OK 替换: %s" % old[:60].replace("\n", "\\n"))
 
           io.open(p, "w", encoding="utf-8").write(s)
+
+          if fail:
+              print("=== 有改动没匹配上，不提交 ===")
+          else:
+              print("=== 全部替换成功 ===")
           sys.exit(fail)
           PYEOF
           python3 /tmp/p1.py
+
+      - name: 核对结果
+        run: |
+          echo "御三家数量检查:"
+          grep -c "SPECIES_" src/starter_choose.c
+          grep -n "STARTER_PAGE_COUNT\|STARTER_MON_TOTAL" src/starter_choose.c | head -8
 
       - name: 开启四大战斗机制
         run: |
@@ -236,7 +241,7 @@ jobs:
                   s = pat.sub(lambda m: m.group(1) + val, s, count=1)
                   print("OK 改为 %s %s" % (name, val))
               else:
-                  print("-- 文件里没有 %s，已跳过" % name)
+                  print("-- 文件里没有 %s，跳过" % name)
           io.open(p, "w", encoding="utf-8").write(s)
           PYEOF
           python3 /tmp/p2.py
