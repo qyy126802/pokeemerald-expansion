@@ -1,0 +1,255 @@
+name: 应用改版补丁
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: 修改御三家选择代码
+        run: |
+          cat > /tmp/p1.py << 'PYEOF'
+          import io, sys
+          p = "src/starter_choose.c"
+          s = io.open(p, encoding="utf-8").read()
+          R = []
+
+          R.append((
+          "#define STARTER_MON_COUNT   3",
+          "#define STARTER_MON_COUNT   3\n"
+          "#define STARTER_PAGE_COUNT  9\n"
+          "#define STARTER_MON_TOTAL   27"))
+
+          R.append((
+          "#define GRASS_STARTER (IS_FRLG ? SPECIES_BULBASAUR  : SPECIES_TREECKO)\n"
+          "#define FIRE_STARTER  (IS_FRLG ? SPECIES_CHARMANDER : SPECIES_TORCHIC)\n"
+          "#define WATER_STARTER (IS_FRLG ? SPECIES_SQUIRTLE   : SPECIES_MUDKIP )\n"
+          "\n"
+          "static const u16 sStarterMon[STARTER_MON_COUNT] =\n"
+          "{\n"
+          "    GRASS_STARTER,\n"
+          "    FIRE_STARTER,\n"
+          "    WATER_STARTER,\n"
+          "};",
+          "static const u16 sStarterMon[STARTER_MON_TOTAL] =\n"
+          "{\n"
+          "    SPECIES_BULBASAUR,  SPECIES_CHARMANDER, SPECIES_SQUIRTLE,\n"
+          "    SPECIES_CHIKORITA,  SPECIES_CYNDAQUIL,  SPECIES_TOTODILE,\n"
+          "    SPECIES_TREECKO,    SPECIES_TORCHIC,    SPECIES_MUDKIP,\n"
+          "    SPECIES_TURTWIG,    SPECIES_CHIMCHAR,   SPECIES_PIPLUP,\n"
+          "    SPECIES_SNIVY,      SPECIES_TEPIG,      SPECIES_OSHAWOTT,\n"
+          "    SPECIES_CHESPIN,    SPECIES_FENNEKIN,   SPECIES_FROAKIE,\n"
+          "    SPECIES_ROWLET,     SPECIES_LITTEN,     SPECIES_POPPLIO,\n"
+          "    SPECIES_GROOKEY,    SPECIES_SCORBUNNY,  SPECIES_SOBBLE,\n"
+          "    SPECIES_SPRIGATITO, SPECIES_FUECOCO,    SPECIES_QUAXLY,\n"
+          "};"))
+
+          R.append((
+          "    if (chosenStarterId > STARTER_MON_COUNT)",
+          "    if (chosenStarterId >= STARTER_MON_TOTAL)"))
+
+          R.append((
+          "#define tCircleSpriteId     data[2]",
+          "#define tCircleSpriteId     data[2]\n#define tStarterPage        data[3]"))
+
+          R.append((
+          "    gTasks[taskId].tStarterSelection = 1;",
+          "    gTasks[taskId].tStarterSelection = 1;\n    gTasks[taskId].tStarterPage = 0;"))
+
+          R.append((
+          "static void Task_HandleStarterChooseInput(u8 taskId)\n"
+          "{\n"
+          "    u8 selection = gTasks[taskId].tStarterSelection;\n"
+          "\n"
+          "    if (JOY_NEW(A_BUTTON))\n"
+          "    {\n"
+          "        u8 spriteId;\n"
+          "\n"
+          "        ClearStarterLabel();\n"
+          "\n"
+          "        // Create white circle background\n"
+          "        spriteId = CreateSprite(&sSpriteTemplate_StarterCircle, sPokeballCoords[selection][0], sPokeballCoords[selection][1], 1);\n"
+          "        gTasks[taskId].tCircleSpriteId = spriteId;\n"
+          "\n"
+          "        // Create Pokemon sprite\n"
+          "        spriteId = CreatePokemonFrontSprite(GetStarterPokemon(gTasks[taskId].tStarterSelection), sPokeballCoords[selection][0], sPokeballCoords[selection][1]);\n"
+          "        gSprites[spriteId].affineAnims = &sAffineAnims_StarterPokemon;\n"
+          "        gSprites[spriteId].callback = SpriteCB_StarterPokemon;\n"
+          "\n"
+          "        gTasks[taskId].tPkmnSpriteId = spriteId;\n"
+          "        gTasks[taskId].func = Task_WaitForStarterSprite;\n"
+          "    }\n"
+          "    else if (JOY_NEW(DPAD_LEFT) && selection > 0)\n"
+          "    {\n"
+          "        gTasks[taskId].tStarterSelection--;\n"
+          "        gTasks[taskId].func = Task_MoveStarterChooseCursor;\n"
+          "    }\n"
+          "    else if (JOY_NEW(DPAD_RIGHT) && selection < STARTER_MON_COUNT - 1)\n"
+          "    {\n"
+          "        gTasks[taskId].tStarterSelection++;\n"
+          "        gTasks[taskId].func = Task_MoveStarterChooseCursor;\n"
+          "    }\n"
+          "}",
+          "static void Task_HandleStarterChooseInput(u8 taskId)\n"
+          "{\n"
+          "    u8 selection = gTasks[taskId].tStarterSelection;\n"
+          "    u8 page = gTasks[taskId].tStarterPage;\n"
+          "    u16 index = page * STARTER_MON_COUNT + selection;\n"
+          "\n"
+          "    if (JOY_NEW(A_BUTTON))\n"
+          "    {\n"
+          "        u8 spriteId;\n"
+          "\n"
+          "        ClearStarterLabel();\n"
+          "\n"
+          "        // Create white circle background\n"
+          "        spriteId = CreateSprite(&sSpriteTemplate_StarterCircle, sPokeballCoords[selection][0], sPokeballCoords[selection][1], 1);\n"
+          "        gTasks[taskId].tCircleSpriteId = spriteId;\n"
+          "\n"
+          "        // Create Pokemon sprite\n"
+          "        spriteId = CreatePokemonFrontSprite(GetStarterPokemon(index), sPokeballCoords[selection][0], sPokeballCoords[selection][1]);\n"
+          "        gSprites[spriteId].affineAnims = &sAffineAnims_StarterPokemon;\n"
+          "        gSprites[spriteId].callback = SpriteCB_StarterPokemon;\n"
+          "\n"
+          "        gTasks[taskId].tPkmnSpriteId = spriteId;\n"
+          "        gTasks[taskId].func = Task_WaitForStarterSprite;\n"
+          "    }\n"
+          "    else if (JOY_NEW(DPAD_LEFT))\n"
+          "    {\n"
+          "        if (selection > 0)\n"
+          "            gTasks[taskId].tStarterSelection--;\n"
+          "        else\n"
+          "        {\n"
+          "            gTasks[taskId].tStarterSelection = STARTER_MON_COUNT - 1;\n"
+          "            gTasks[taskId].tStarterPage = (page + STARTER_PAGE_COUNT - 1) % STARTER_PAGE_COUNT;\n"
+          "        }\n"
+          "        PlaySE(SE_SELECT);\n"
+          "        gTasks[taskId].func = Task_MoveStarterChooseCursor;\n"
+          "    }\n"
+          "    else if (JOY_NEW(DPAD_RIGHT))\n"
+          "    {\n"
+          "        if (selection < STARTER_MON_COUNT - 1)\n"
+          "            gTasks[taskId].tStarterSelection++;\n"
+          "        else\n"
+          "        {\n"
+          "            gTasks[taskId].tStarterSelection = 0;\n"
+          "            gTasks[taskId].tStarterPage = (page + 1) % STARTER_PAGE_COUNT;\n"
+          "        }\n"
+          "        PlaySE(SE_SELECT);\n"
+          "        gTasks[taskId].func = Task_MoveStarterChooseCursor;\n"
+          "    }\n"
+          "    else if (JOY_NEW(L_BUTTON))\n"
+          "    {\n"
+          "        gTasks[taskId].tStarterPage = (page + STARTER_PAGE_COUNT - 1) % STARTER_PAGE_COUNT;\n"
+          "        PlaySE(SE_SELECT);\n"
+          "        gTasks[taskId].func = Task_MoveStarterChooseCursor;\n"
+          "    }\n"
+          "    else if (JOY_NEW(R_BUTTON))\n"
+          "    {\n"
+          "        gTasks[taskId].tStarterPage = (page + 1) % STARTER_PAGE_COUNT;\n"
+          "        PlaySE(SE_SELECT);\n"
+          "        gTasks[taskId].func = Task_MoveStarterChooseCursor;\n"
+          "    }\n"
+          "}"))
+
+          R.append((
+          "    CreateStarterPokemonLabel(gTasks[taskId].tStarterSelection);",
+          "    CreateStarterPokemonLabel(gTasks[taskId].tStarterPage * STARTER_MON_COUNT + gTasks[taskId].tStarterSelection);", 2))
+
+          R.append((
+          "    PlayCry_Normal(GetStarterPokemon(gTasks[taskId].tStarterSelection), 0);",
+          "    PlayCry_Normal(GetStarterPokemon(gTasks[taskId].tStarterPage * STARTER_MON_COUNT + gTasks[taskId].tStarterSelection), 0);"))
+
+          R.append((
+          "        gSpecialVar_Result = gTasks[taskId].tStarterSelection;",
+          "        gSpecialVar_Result = gTasks[taskId].tStarterPage * STARTER_MON_COUNT + gTasks[taskId].tStarterSelection;"))
+
+          R.append((
+          "    enum Species species = GetStarterPokemon(selection);\n"
+          "    CopyMonCategoryText(species, categoryText);\n"
+          "    speciesName = GetSpeciesName(species);\n"
+          "\n"
+          "    winTemplate = sWindowTemplate_StarterLabel;\n"
+          "    winTemplate.tilemapLeft = sStarterLabelCoords[selection][0];\n"
+          "    winTemplate.tilemapTop = sStarterLabelCoords[selection][1];",
+          "    u8 slot = selection % STARTER_MON_COUNT;\n"
+          "    enum Species species = GetStarterPokemon(selection);\n"
+          "    CopyMonCategoryText(species, categoryText);\n"
+          "    speciesName = GetSpeciesName(species);\n"
+          "\n"
+          "    winTemplate = sWindowTemplate_StarterLabel;\n"
+          "    winTemplate.tilemapLeft = sStarterLabelCoords[slot][0];\n"
+          "    winTemplate.tilemapTop = sStarterLabelCoords[slot][1];"))
+
+          R.append((
+          "    labelLeft = sStarterLabelCoords[selection][0] * 8 - 4;\n"
+          "    labelRight = (sStarterLabelCoords[selection][0] + 13) * 8 + 4;\n"
+          "    labelTop = sStarterLabelCoords[selection][1] * 8;\n"
+          "    labelBottom = (sStarterLabelCoords[selection][1] + 4) * 8;",
+          "    labelLeft = sStarterLabelCoords[slot][0] * 8 - 4;\n"
+          "    labelRight = (sStarterLabelCoords[slot][0] + 13) * 8 + 4;\n"
+          "    labelTop = sStarterLabelCoords[slot][1] * 8;\n"
+          "    labelBottom = (sStarterLabelCoords[slot][1] + 4) * 8;"))
+
+          fail = 0
+          for item in R:
+              old, new = item[0], item[1]
+              cnt = item[2] if len(item) > 2 else 1
+              n = s.count(old)
+              if n != cnt:
+                  print("!! 没找到(出现 %d 次, 期望 %d 次): %s" % (n, cnt, old[:60]))
+                  fail = 1
+                  continue
+              s = s.replace(old, new)
+              print("OK 替换: %s" % old[:60])
+
+          io.open(p, "w", encoding="utf-8").write(s)
+          sys.exit(fail)
+          PYEOF
+          python3 /tmp/p1.py
+
+      - name: 开启四大战斗机制
+        run: |
+          cat > /tmp/p2.py << 'PYEOF'
+          import io, re
+          p = "include/config/battle.h"
+          s = io.open(p, encoding="utf-8").read()
+          for name, val in [
+              ("B_MEGA_EVOLUTION", "TRUE"),
+              ("B_Z_MOVES", "TRUE"),
+              ("B_DYNAMAX_ENABLED", "TRUE"),
+              ("B_DYNAMAX_BATTLE", "1"),
+              ("B_TERA_ORB_ALWAYS_CHARGED", "TRUE"),
+              ("B_SHOW_DYNAMAX_MESSAGE", "TRUE"),
+          ]:
+              pat = re.compile(r"(#define\s+" + name + r"\s+)\S+")
+              if pat.search(s):
+                  s = pat.sub(lambda m: m.group(1) + val, s, count=1)
+                  print("OK 改为 %s %s" % (name, val))
+              else:
+                  print("-- 文件里没有 %s，已跳过" % name)
+          io.open(p, "w", encoding="utf-8").write(s)
+          PYEOF
+          python3 /tmp/p2.py
+
+      - name: 提交改动
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "没有改动，跳过提交"
+          else
+            git commit -m "改版: 27只御三家可选 + 四大机制全开"
+            git push origin HEAD:master
+            echo "已提交，正在触发编译"
+          fi
