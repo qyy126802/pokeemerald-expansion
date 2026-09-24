@@ -1,0 +1,37 @@
+name: Build GBA ROM
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 装编译器
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            build-essential git libpng-dev python3 \
+            binutils-arm-none-eabi gcc-arm-none-eabi libnewlib-arm-none-eabi
+
+      - name: 编译游戏
+        run: make -j$(nproc)
+
+      - name: 收文件
+        run: |
+          mkdir -p out
+          find . -maxdepth 1 -name '*.gba' -exec cp {} out/ \;
+          ls -lh out/
+          test -n "$(ls -A out)" || (echo "没找到 gba 文件" && exit 1)
+
+      - name: 上传
+        uses: actions/upload-artifact@v4
+        with:
+          name: gba-rom-${{ github.run_number }}
+          path: out/*.gba
+          retention-days: 30
